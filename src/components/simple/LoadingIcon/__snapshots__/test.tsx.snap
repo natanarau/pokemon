@@ -1,0 +1,27 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<LoadingIcon /> should match snapshot 1`] = `
+<div>
+  <div
+    class="ant-spin ant-spin-spinning"
+    data-testid="LoadingIcon"
+  >
+    <span
+      class="ant-spin-dot ant-spin-dot-spin"
+    >
+      <i
+        class="ant-spin-dot-item"
+      />
+      <i
+        class="ant-spin-dot-item"
+      />
+      <i
+        class="ant-spin-dot-item"
+      />
+      <i
+        class="ant-spin-dot-item"
+      />
+    </span>
+  </div>
+</div>
+`;

@@ -1,0 +1,36 @@
+#+----------------------------------------------------------+
+#|               Evite alterar este arquivo                 |
+#|              Só altere se for recomendado                |
+#| Alterações erradas podem impactar a entrega da aplicação |
+#+----------------------------------------------------------+
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "cashback-landing-page-next-static"
+  description: "landing page de cashback de forma estática e usando next"
+  tags:
+    - reactjs
+    - s3
+    - website
+    - sonarqube
+    - hefesto-v2
+    - devops-midway
+    - tribe-relationship-channels    
+  annotations:
+    # Backstage default annotations  
+    backstage.io/techdocs-ref: dir:.
+    sonarqube.org/project-key: "devops-midway-7ca6a887-7823-451a-a65a-4cfc97cf640d-cashback-landing-page-next-static"
+    backstage.io/code-coverage: scm-only
+
+    # Custom Annotations
+    rchlo.io/risk-score: "1"
+    rchlo.io/jira-company-label: 
+    rchlo.io/jira-tribe-label: 
+    rchlo.io/jira-squad-label:         
+    
+
+
+spec:
+  type: library
+  lifecycle: experimental
+  owner: 

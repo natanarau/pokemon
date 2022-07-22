@@ -1,0 +1,333 @@
+
+
+##########
+# 			                           _ _
+# 			 _ __   __ _  ___     __ _| | |_ ___ _ __ __ _ _ __
+# 			| '_ \ / _` |/ _ \   / _` | | __/ _ \ '__/ _` | '__|
+# 			| | | | (_| | (_) | | (_| | | ||  __/ | | (_| | |
+# 			|_| |_|\__,_|\___/   \__,_|_|\__\___|_|  \__,_|_|
+#
+# 	  	                       _ ._  _ , _ ._
+# 	  	                     (_ ' ( `  )_  .__)
+# 	  	                   ( (  (    )   `)  ) _)
+# 	  	                  (__ (_   (_ . _) _) ,__)
+# 	  	                      `~~`\ ' . /`~~`
+# 	  	                      ,::: ;   ; :::,
+# 	  	                     ':::::::::::::::'
+# 	 _____________________________/_____\_______________________________
+# 	| 		                      										                    |
+# 	| 		   QUALQUER ALTERAÇÃO AQUI PODERÁ IMPACTAR A ESTEIRA          |
+# 	|    SÓ ALTERE SE FOR RECOMENDADO OU SE SOUBER O QUE ESTÁ FAZENDO   |
+# 	|___________________________________________________________________|
+#
+#
+# 	Não altere esse arquivo, exceto se recomendado ou se souber exatamente o que estiver fazendo
+# 	Este arquivo é utilizado como PONTE de comunicação entre esteira e o repositório
+# 	Os comandos ficam aqui para trazer flexibilidade e autonomia ao projeto e seus contribuidores
+# 	Toda e qualquer alteração neste arquivo PODE impactar o funcionando da esteira
+#
+##########
+
+version: "3"
+
+vars:
+  DOCKER_USER:
+    sh: "if [ {{OS}} == 'windows' ]; then echo '1000'; else echo $(id -u); fi"
+  DOCKER_GROUP:
+    sh: "if [ {{OS}} == 'windows' ]; then echo '1000'; else echo $(id -g); fi"
+  DOCKER_WORKDIR: /app/sources/
+  DOCKER_NPM_CACHE_FOLDER: /tmp/.npm
+  DOCKER_IMAGE_BUILDER: builder:latest
+  DOCKER_IMAGE_RUNTIME: runtime:latest
+  DOCKER_REGISTRY: "rchlo.azurecr.io"
+  GITLOG_COUNT: "{{.GITLOG_COUNT | default 10}}"
+ 
+dotenv: ['.env']
+
+tasks:
+  default:
+    cmds:
+      - task --help
+      - task --list
+
+
+  #
+  #                                                  \\\///
+  #                                                 / _  _ \
+  #                                               (| (.)(.) |)
+  #    ______________________________________ .-.OOOo--()--oOOO.-.____________________________________
+  #   |                                                                                               |
+  #   |      Toda alteração neste arquivo deve ser feita sabendo que pode afetar o pipeline           |
+  #   |     Caso algo foi alterado e parou de funcionar, é de extrema importância um rollback         |
+  #   |                                                                                               |
+  #   '-------------------------------------------.oooO-----------------------------------------------'
+  #                                               (   )   Oooo.
+  #                                                \ (    (   )
+  #                                                 \_)    ) /
+  #                                                       (_/
+  #
+
+
+  ####################################
+  #           NÃO  ALTERAR           #
+  #    Comando usado pela esteira    #
+  ####################################
+
+  get:version:
+    desc: "Obtem a versão atual definida para a aplicação no package.json"
+    deps: [build:utils-image, install:dependencies]
+    cmds:
+      - >
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          {{.DOCKER_IMAGE_BUILDER}} \
+          node -p -e "require('./package.json').version"
+
+  review:lint:
+    desc: "Executa as rotinas de lint da aplicação"
+    deps: [build:utils-image, install:dependencies]
+    cmds:
+      - >
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          {{.DOCKER_IMAGE_BUILDER}} \
+          npm run lint
+
+  review:security:
+    desc: "Executa as rotinas de segurança da aplicação"
+    # deps: [build:utils-image, install:dependencies]
+    cmds:
+      - >
+        echo 123
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          {{.DOCKER_IMAGE_BUILDER}} \
+          npm run security
+  
+  review:test:
+    desc: "Executa as rotinas de teste da aplicação"
+    deps: [build:utils-image, install:dependencies]
+    cmds:
+      - >
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          {{.DOCKER_IMAGE_BUILDER}} \
+          npm run test
+
+      - >
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          alpine:latest \
+          sed -i "s|SF:{{.DOCKER_WORKDIR}}|SF:|g" .reports/lcov.info
+
+  build:image:
+    desc: "Cria a imagem runtime que será usada para deploy (Usado pela esteira)"  
+    deps: [build:utils-image, build:application]
+    cmds:
+      - >
+        docker build \
+          --network host \
+          -e npm_config_cache="/tmp/.npm" \
+          -t {{.DOCKER_IMAGE_RUNTIME}} \
+          -f .azuredevops/runtime.Dockerfile .
+
+  install:dependencies:
+    desc: "Instala as dependencias do projeto (Usado pela esteira)"
+    deps: [build:utils-image]
+    cmds:
+      - >
+        docker run \
+            --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+            --network host \
+            --workdir "{{.DOCKER_WORKDIR}}" \
+            -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+            -e npm_config_cache="{{.DOCKER_NPM_CACHE_FOLDER}}" \
+            builder:latest \
+            sh -c "if [ -f "package-lock.json" ]; then echo 'use npm ci' && npm ci; elif [ -f "yarn.lock" ]; then echo 'use yarn --frozen-lockfile' && yarn --frozen-lockfile; else echo 'fresh npm install' && npm install --verbose; fi"
+
+  build:utils-image:
+    desc: "Cria uma imagem utilizada para utilizações gerais"
+    cmds:
+      - docker build --network host -t {{ .DOCKER_IMAGE_BUILDER }} -f .azuredevops/builder.Dockerfile .
+
+  build:application:
+    desc: "Roda o comando de build da aplicação (Usado pela esteira)"
+    deps: [install:dependencies]
+    cmds:
+      - >
+        docker run \
+          --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+          --network host \
+          --workdir "{{.DOCKER_WORKDIR}}" \
+          -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+          -e npm_config_cache="/tmp/.npm" \
+          {{.DOCKER_IMAGE_BUILDER}} \
+          npm run build
+
+  build:runtime-image:
+    desc: "Cria a imagem runtime que será usada para deploy (Usado pela esteira)"  
+    deps: [build:utils-image, build:application]
+    cmds:
+      - >
+        docker build \
+          --network host \
+          -e npm_config_cache="/tmp/.npm" \
+          -t {{.DOCKER_IMAGE_RUNTIME}} \
+          -f .azuredevops/runtime.Dockerfile .
+
+  get:application-version:
+    desc: "Retorna do package.json  a versão da aplicação (Usado pela esteira)" 
+    cmds:
+      - node -p -e "require('./package.json').version"
+
+
+  get:publish-test-result-format:
+    desc: ""
+    cmds:
+      - echo "JUnit"
+
+  get:publish-test-result-files:
+    desc: ""
+    cmds:
+      - echo ".reports/test-report.xml"
+
+  get:publish-test-html-report:
+    desc: ""
+    cmds:
+      - echo ".reports/test-report.html"
+
+  get:publish-test-coverage-tool:
+    desc: ""
+    cmds:
+      - echo "Cobertura"
+
+  get:publish-test-coverage-summary-file:
+    desc: ""
+    cmds:
+      - echo ".reports/cobertura-coverage.xml"
+
+  get:publish-test-coverage-path-to-sources:
+    desc: ""
+    cmds:
+      - echo "src"
+
+  get:assume-role:
+    desc: "Retorna do .azuredevops/config/[.DEPLOY_ENVIRONMENT]/environments_variables.yml o contexto(cluster) em que será deployado o workload (aplicação)  (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" --workdir "{{.DOCKER_WORKDIR}}" linuxserver/yq -r '.env | map(select(.name == "AWS_ASSUME_ROLE_ARN")) | .[0] | .value' .azuredevops/config/{{.DEPLOY_ENVIRONMENT}}/environments_variables.yml
+    preconditions:
+      - sh: "[ ! -z {{.DEPLOY_ENVIRONMENT}} ]"
+        msg: "Defina a variavel DEPLOY_ENVIRONMENT com um dos ambientes (exemplo: task get-assume-role DEPLOY_ENVIRONMENT='development')"
+
+  get:bucket-name:
+    desc: "Retorna do .azuredevops/config/[.DEPLOY_ENVIRONMENT]/environments_variables.yml o contexto(cluster) em que será deployado o workload (aplicação)  (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" --workdir "{{.DOCKER_WORKDIR}}" linuxserver/yq -r '.env | map(select(.name == "AWS_DEPLOY_BUCKET_NAME")) | .[0] | .value' .azuredevops/config/{{.DEPLOY_ENVIRONMENT}}/environments_variables.yml
+    preconditions:
+      - sh: "[ ! -z {{.DEPLOY_ENVIRONMENT}} ]"
+        msg: "Defina a variavel DEPLOY_ENVIRONMENT com um dos ambientes (exemplo: task get-assume-role DEPLOY_ENVIRONMENT='development')"
+
+#  get:k8s-namespace:
+#    desc: "Retorna do catalog-info o namespace em que será deployado o workload (aplicação) (Usado pela esteira)"
+#    cmds:
+#      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."backstage.io/kubernetes-namespace"' /tmp/catalog-info.yaml
+
+#  get:k8s-context:
+#    desc: "Retorna do .azuredevops/helm/[.DEPLOY_ENVIRONMENT]/values.yml o contexto(cluster) em que será deployado o workload (aplicação)  (Usado pela esteira)"
+#    cmds:
+#      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/.azuredevops/helm/{{.DEPLOY_ENVIRONMENT}}/values.yml:/tmp/values.yml linuxserver/yq -r '.k8sContext' /tmp/values.yml
+#    preconditions:
+#      - sh: "[ ! -z {{.DEPLOY_ENVIRONMENT}} ]"
+#        msg: "Defina a variavel DEPLOY_ENVIRONMENT com um dos ambientes na pasta helm (exemplo: DEPLOY_ENVIRONMENT=development task get-k8s-context)"
+  
+#  get:k8s-releasename:
+#    desc: "Retorna do catalog-info o nome do workload (aplicação) que será usado no cluster (Usado pela esteira)"
+#    cmds:
+#      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."backstage.io/kubernetes-id"' /tmp/catalog-info.yaml
+
+  get:tribe-name:
+    desc: "Retorna do catalog-info o nome da tribo mantenedora (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."rchlo.io/jira-tribe-label"' /tmp/catalog-info.yaml
+
+  get:tribe-id:
+    desc: "Retorna do catalog-info o id da tribo mantenedora (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."rchlo.io/jira-tribe-id"' /tmp/catalog-info.yaml
+
+
+  get:squad-name:
+    desc: "Retorna do catalog-info o nome da squad mantenedora (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."rchlo.io/jira-squad-label"' /tmp/catalog-info.yaml
+
+  get:squad-id:
+    desc: "Retorna do catalog-info o id da squad mantenedora (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."rchlo.io/jira-squad-id"' /tmp/catalog-info.yaml
+
+
+  get:chart-name:
+    desc: "Retorna do catalog-info o nome do chart configurado para ser usado (Usado pela esteira)"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd)/catalog-info.yaml:/tmp/catalog-info.yaml linuxserver/yq -r '.metadata.annotations."rchlo.io/helm-chart-name"' /tmp/catalog-info.yaml
+
+  get:application-changelog:
+    desc: "Retorna o changelog da aplicação para a versão especifcia (desde que preenchido conforme keepachangelog.org) (Usado pela esteira)"
+    cmds:
+      - >
+        docker run \
+            --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+            --network host \
+            --workdir "{{.DOCKER_WORKDIR}}" \
+            -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+            -e npm_config_cache="{{.DOCKER_NPM_CACHE_FOLDER}}" \
+            node:12-alpine \
+            sh -c "awk \"/^## \[$(task get:application-version)\] /{p=1;print;next} p&&/^## \[[0-9]+\./{p=0};p\" docs/changelog.md"
+
+  get:application-git-log:
+    desc: "Retorna o git log da aplicação com os últimos commits definidos abaixo"
+    cmds:
+      - >
+        docker run \
+            --user="{{.DOCKER_USER}}:{{.DOCKER_GROUP}}" \
+            --network host \
+            --workdir "{{.DOCKER_WORKDIR}}" \
+            -v "$(pwd)"/:"{{.DOCKER_WORKDIR}}" \
+            -e npm_config_cache="{{.DOCKER_NPM_CACHE_FOLDER}}" \
+            alpine/git \
+            log --oneline -n {{.GITLOG_COUNT}} --format='* %h - %s (%ad) por <%ae>'
+
+  get:sonar-project-key:
+    desc: "Retorna do catalog-info o id do projeto no sonarqube"
+    cmds:
+      - docker run --rm --log-driver none --entrypoint yq -v $(pwd):/tmp/ linuxserver/yq -r '.metadata.annotations."sonarqube.org/project-key"' /tmp/catalog-info.yaml
+
+
+
+  # Realiza o docker login no registry da rchlo
+  docker:login:
+    desc: "Realiza Login no registry da rchlo"
+    cmds:
+      - az account show --output none --subscription shared-PROD || az login --output none
+      - echo $(az acr login -n {{.DOCKER_REGISTRY}} --expose-token --query accessToken --output tsv) | docker login {{.DOCKER_REGISTRY}} -u 00000000-0000-0000-0000-000000000000 --password-stdin

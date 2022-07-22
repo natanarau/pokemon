@@ -1,0 +1,17 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<Container /> should match snapshot 1`] = `
+.c0 {
+  max-width: container.xl;
+  margin: auto;
+}
+
+<div>
+  <div
+    class="c0"
+    data-testid="Container"
+  >
+    Container
+  </div>
+</div>
+`;
