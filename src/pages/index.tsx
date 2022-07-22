@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>Prokemon</title>
+        <title>Pokemon</title>
         <meta name="title" content="Pokemon" />
         <meta
           name="description"
