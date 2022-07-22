@@ -13,8 +13,6 @@ module.exports = withPWA({
   exportPathMap: function () {
     return {
       '/': { page: '/' },
-      '/perguntas-frequentes': { page: '/perguntas-frequentes' },
-      '/cashback': { page: '/cashback' },
       '/404': { page: '/404' },
     };
   },
