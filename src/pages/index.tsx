@@ -5,7 +5,7 @@ import Header from 'components/complex/Header';
 import Search from 'components/complex/Search';
 import Filter from 'components/complex/Filter';
 import { Box } from 'components/simple/Box';
-import SessionPokemons from 'components/simple/SessionPokemons';
+import SessionPokemons from 'components/complex/SessionPokemons';
 import DetailsPokemon from 'components/complex/DetailsPokemon';
 
 export default function HomePage() {
@@ -16,7 +16,7 @@ export default function HomePage() {
         <meta name="title" content="Pokemon" />
         <meta
           name="description"
-          content="Venha conferir a lista dos prokemons."/>
+          content="Venha conferir a lista dos pokemons."/>
       </Head>
       <Layout>
         <Header/>
